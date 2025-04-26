@@ -1,0 +1,48 @@
+import discord
+import os
+import requests
+
+TOKEN = os.getenv('DISCORD_TOKEN')
+QUIVERQUANT_API_KEY = os.getenv('QUIVERQUANT_API_KEY')
+NEWS_API_KEY = os.getenv('NEWS_API_KEY')
+
+intents = discord.Intents.default()
+client = discord.Client(intents=intents)
+
+@client.event
+async def on_ready():
+    print(f'Logged in as {client.user}')
+
+@client.event
+async def on_message(message):
+    if message.author == client.user:
+        return
+
+    if message.content.startswith('/insider'):
+        insider_data = requests.get(
+            "https://api.quiverquant.com/beta/insidertrading",
+            headers={"Authorization": f"Bearer {QUIVERQUANT_API_KEY}"}
+        ).json()
+        
+        if insider_data:
+            first_trade = insider_data[0]
+            await message.channel.send(
+                f"Top Insider Buy: *{first_trade['Ticker']}* by {first_trade['InsiderName']}."
+            )
+        else:
+            await message.channel.send("No insider trading data available.")
+
+    if message.content.startswith('/news'):
+        news_data = requests.get(
+            f"https://newsapi.org/v2/top-headlines?q=market&apiKey={NEWS_API_KEY}"
+        ).json()
+        
+        if news_data['articles']:
+            first_article = news_data['articles'][0]
+            await message.channel.send(
+                f"*Breaking News*: {first_article['title']} - {first_article['url']}"
+            )
+        else:
+            await message.channel.send("No breaking news available.")
+
+client.run(TOKEN)
